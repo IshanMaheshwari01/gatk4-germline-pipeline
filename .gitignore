@@ -1,0 +1,42 @@
+# Nextflow
+.work/
+work/
+.nextflow*
+results/
+trace.txt*
+report.html*
+timeline.html*
+dag.dot*
+
+# Large files
+*.fa
+*.fasta
+*.fai
+*.bwt
+*.pac
+*.sa
+*.amb
+*.ann
+*.dict
+*.bam
+*.bai
+*.vcf
+*.vcf.gz
+*.vcf.gz.tbi
+*.g.vcf.gz
+*.g.vcf.gz.tbi
+*.fastq
+*.fastq.gz
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
