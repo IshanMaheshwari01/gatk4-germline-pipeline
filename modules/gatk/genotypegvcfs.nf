@@ -2,7 +2,7 @@ process GATK_GENOTYPEGVCFS {
     tag "$meta.id"
     label 'process_medium'
 
-    publishDir "${params.outdir}/vcf", mode: 'copy'
+    publishDir "${params.outdir}/vcf", mode: params.publish_dir_mode
 
     container "${params.gatk_container}"
 

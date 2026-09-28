@@ -2,7 +2,7 @@ process GATK_HAPLOTYPECALLER {
     tag "$meta.id"
     label 'process_high'
     
-    publishDir "${params.outdir}/gvcf", mode: 'copy'
+    publishDir "${params.outdir}/gvcf", mode: params.publish_dir_mode
     
     container "${params.gatk_container}"
     

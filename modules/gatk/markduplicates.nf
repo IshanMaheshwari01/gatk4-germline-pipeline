@@ -2,7 +2,7 @@ process GATK_MARKDUPLICATES {
     tag "$meta.id"
     label 'process_medium'
     
-    publishDir "${params.outdir}/markduplicates", mode: 'copy'
+    publishDir "${params.outdir}/markduplicates", mode: params.publish_dir_mode
     
     container "${params.gatk_container}"
     
