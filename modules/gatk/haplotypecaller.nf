@@ -25,7 +25,7 @@ process GATK_HAPLOTYPECALLER {
         -I ${bam} \\
         -O ${prefix}.g.vcf.gz \\
         -ERC GVCF \\
-        -L chr21
+        -L ${params.interval}
     
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
