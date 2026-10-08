@@ -2,7 +2,7 @@ process BWA_MEM {
     tag "$meta.id"
     label 'process_high'
     
-    publishDir "${params.outdir}/alignment", mode: 'copy'
+    publishDir "${params.outdir}/alignment", mode: params.publish_dir_mode
     
     input:
     tuple val(meta), path(reads)
@@ -15,7 +15,7 @@ process BWA_MEM {
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
     def read_group = "\"@RG\\tID:${meta.id}\\tSM:${meta.id}\\tPL:ILLUMINA\\tLB:${meta.id}\\tPU:1\""
-    def ref_base = "${ref_dir}/Homo_sapiens_assembly38.chr21.fa"
+    def ref_base = "${ref_dir}/${file(params.genome).name}"
     """
     bwa mem \\
         -R ${read_group} \\

@@ -3,6 +3,7 @@
 include { BWA_MEM } from './modules/bwa/main'
 include { BQSR } from './subworkflows/bqsr'
 include { GATK_HAPLOTYPECALLER } from './modules/gatk/haplotypecaller'
+include { GATK_GENOTYPEGVCFS } from './modules/gatk/genotypegvcfs'
 include { MULTIQC } from './modules/multiqc/main'
 
 workflow {
@@ -42,6 +43,11 @@ workflow {
         ch_genome, ch_genome_fai, ch_genome_dict
     )
     
+    GATK_GENOTYPEGVCFS(
+        GATK_HAPLOTYPECALLER.out.gvcf.join(GATK_HAPLOTYPECALLER.out.tbi, by: [0]),
+        ch_genome, ch_genome_fai, ch_genome_dict
+    )
+
     // MultiQC: collect metrics from MarkDuplicates
     MULTIQC(
         BQSR.out.metrics.map { meta, metrics -> metrics }.collect()

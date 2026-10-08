@@ -1,7 +1,7 @@
 process MULTIQC {
     label 'process_low'
     
-    publishDir "${params.outdir}/multiqc", mode: 'copy'
+    publishDir "${params.outdir}/multiqc", mode: params.publish_dir_mode
     
     container "ewels/multiqc:latest"
     

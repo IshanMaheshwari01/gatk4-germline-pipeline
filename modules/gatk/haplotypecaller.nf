@@ -2,7 +2,7 @@ process GATK_HAPLOTYPECALLER {
     tag "$meta.id"
     label 'process_high'
     
-    publishDir "${params.outdir}/gvcf", mode: 'copy'
+    publishDir "${params.outdir}/gvcf", mode: params.publish_dir_mode
     
     container "${params.gatk_container}"
     
@@ -25,7 +25,7 @@ process GATK_HAPLOTYPECALLER {
         -I ${bam} \\
         -O ${prefix}.g.vcf.gz \\
         -ERC GVCF \\
-        -L chr21
+        -L ${params.interval}
     
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
