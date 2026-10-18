@@ -1,225 +1,113 @@
 # GATK4 Germline Variant Calling Pipeline
 
-[![Nextflow](https://img.shields.io/badge/nextflow-24.04.6-brightgreen.svg)](https://www.nextflow.io/)
+[![Nextflow](https://img.shields.io/badge/nextflow-24.04-brightgreen.svg)](https://www.nextflow.io/)
 [![GATK](https://img.shields.io/badge/GATK-4.5.0.0-blue.svg)](https://gatk.broadinstitute.org/)
-[![Docker](https://img.shields.io/badge/docker-20.10-blue.svg)](https://www.docker.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A production-grade, containerized germline variant calling pipeline following GATK Best Practices, built with Nextflow and Docker.
+A Nextflow (DSL2) pipeline that takes paired-end FASTQ files and produces a gVCF per sample, following the GATK Best Practices for germline short variants. Every step runs in a Docker container.
 
-## Overview
+I built this to learn how a variant calling workflow is put together properly: one module per tool, config kept separate from code, and the same pipeline running on a laptop, a SLURM cluster or AWS Batch just by changing the profile.
 
-This pipeline performs end-to-end germline short variant discovery from raw paired-end FASTQ files to genomic VCF (gVCF) outputs:
+## Steps
 
-- **Alignment** with BWA-MEM
-- **Duplicate Marking** with GATK MarkDuplicates
-- **Base Quality Score Recalibration (BQSR)** with GATK BaseRecalibrator + ApplyBQSR
-- **Variant Calling** with GATK HaplotypeCaller (ERC GVCF mode)
-- **QC Reporting** with MultiQC
+1. **BWA-MEM** aligns reads to the reference, adds read group tags and sorts the BAM.
+2. **MarkDuplicates** flags PCR and optical duplicates (they are marked, not removed).
+3. **BaseRecalibrator + ApplyBQSR** correct base quality scores using known variant sites (dbSNP and Mills indels).
+4. **HaplotypeCaller** calls variants in `-ERC GVCF` mode, so the output can be joint-genotyped later.
+5. **MultiQC** turns the duplication metrics into an HTML report. (For now it only reads the MarkDuplicates metrics.)
 
-The pipeline is designed to be portable across local machines, HPC clusters (SLURM), and cloud platforms (AWS Batch).
+Each tool step also writes out the version it used to `versions.yml`.
 
-## Features
-
-- **Reproducible**: Docker containers ensure identical environments everywhere
-- **Portable**: Run locally, on SLURM, or AWS Batch with profile switches
-- **Modular**: Nextflow DSL2 modules for easy extension and maintenance
-- **Best Practices**: Follows GATK4 germline variant discovery guidelines
-- **QC Integration**: Automatic MultiQC report generation
-- **Version Tracking**: Every process emits tool versions for full provenance
-
-## Quick Start
+## Quick start
 
 ```bash
-# Clone the repository
 git clone https://github.com/IshanMaheshwari01/gatk4-germline-pipeline.git
 cd gatk4-germline-pipeline
 
-# Download reference data
+# check the wiring without running any tools (this is what CI runs)
+nextflow run main.nf -profile test -stub-run
+
+# download chr21 of hg38 plus the dbSNP and Mills files, and build the indexes
 bash scripts/download_references.sh
 
-# Run test pipeline
-nextflow run main.nf -profile test,docker
+# run it
+nextflow run main.nf -profile standard,docker --input samplesheet.csv
 ```
 
-## Prerequisites
+To keep things small I use chromosome 21 only. `scripts/download_references.sh` pulls hg38 from UCSC, cuts out chr21, and builds the FASTA, BWA and sequence dictionary indexes.
 
-| Tool                                   | Version   | Purpose                |
-| -------------------------------------- | --------- | ---------------------- |
-| [Nextflow](https://www.nextflow.io/)   | >= 24.04  | Workflow orchestration |
-| [Docker](https://www.docker.com/)      | >= 20.10  | Containerization       |
-| [BWA](http://bio-bwa.sourceforge.net/) | >= 0.7.17 | Sequence alignment     |
-| [Samtools](http://www.htslib.org/)     | >= 1.15   | BAM manipulation       |
-| Java                                   | >= 17     | GATK runtime           |
+## Requirements
 
+- Nextflow 24.04 or newer
+- Docker
+- Java 17
+- BWA and samtools (only needed by the reference download script)
 
-## Installation
+## Input
 
-```bash
-# Install Nextflow
-wget -qO- https://get.nextflow.io | bash
-sudo mv nextflow /usr/local/bin/
-
-# Install Docker
-sudo apt install -y docker.io
-sudo usermod -aG docker $USER
-
-# Install BWA and Samtools
-sudo apt install -y bwa samtools
-```
-
-## Usage
-
-Input: Samplesheet
-Create a CSV file with your samples:
+A CSV samplesheet with one row per sample:
 
 ```csv
 sample,fastq_1,fastq_2
 NA12878,/path/to/NA12878_R1.fastq.gz,/path/to/NA12878_R2.fastq.gz
 ```
 
-## Execution Profiles
+## Profiles
 
-| Profile     | Description                   |
-| ----------- | ----------------------------- |
-| `standard`  | Local execution               |
-| `docker`    | Enable Docker containers      |
-| `slurm`     | SLURM HPC cluster             |
-| `aws_batch` | AWS Batch cloud execution     |
-| `test`      | Reduced resources for testing |
+| Profile | What it does |
+|---|---|
+| `standard` | Run on the local machine |
+| `docker` | Use the Docker containers |
+| `slurm` | Submit jobs to a SLURM cluster |
+| `aws_batch` | Run on AWS Batch |
+| `test` | Lower CPU and memory limits (2 CPUs, 4 GB) |
 
-Combine profiles: nextflow run main.nf -profile test,docker
-
-## Example Commands
-
-```bash
-# Local execution with Docker
-nextflow run main.nf -profile standard,docker --input samplesheet.csv
-
-# SLURM cluster
-nextflow run main.nf -profile slurm --input samplesheet.csv
-
-# AWS Batch
-nextflow run main.nf -profile aws_batch --input samplesheet.csv
-
-# Resume from failed step
-nextflow run main.nf -profile standard,docker -resume
-```
-
-## Pipeline Steps
-
-1. BWA-MEM Alignment
-
-- Aligns paired-end reads to the reference genome
-- Attaches read group metadata (RG tags)
-- Outputs coordinate-sorted BAM
-
-2. MarkDuplicates
-
-- Identifies PCR/optical duplicates
-- Marks duplicates without removing them
-- Generates duplication metrics
-
-3. Base Quality Score Recalibration (BQSR)
-
-- BaseRecalibrator: Learns sequencer error patterns using known variant sites
-- ApplyBQSR: Adjusts base quality scores for downstream accuracy
-
-4. HaplotypeCaller
-
-- Performs local de novo assembly around variant sites
-- Outputs genomic VCF (gVCF) with genotype likelihoods
-- Uses ERC GVCF mode for joint genotyping compatibility
-
-5. MultiQC
-
-- Aggregates QC metrics from all steps
-- Generates interactive HTML report
+Profiles can be combined, for example `-profile test,docker`. Add `-resume` to pick up from the last step that finished.
 
 ## Parameters
 
-| Parameter          | Default                       | Description               |
-| ------------------ | ----------------------------- | ------------------------- |
-| `--input`          | `test_data/samplesheet.csv`   | Samplesheet CSV path      |
-| `--outdir`         | `results`                     | Output directory          |
-| `--genome`         | `test_data/references/...`    | Reference genome FASTA    |
-| `--known_sites`    | `test_data/references/...`    | dbSNP VCF for BQSR        |
-| `--mills`          | `test_data/references/...`    | Mills indels VCF for BQSR |
-| `--gatk_container` | `broadinstitute/gatk:4.5.0.0` | GATK Docker image         |
+| Parameter | Default | Description |
+|---|---|---|
+| `--input` | `test_data/samplesheet.csv` | Samplesheet |
+| `--outdir` | `results` | Output folder |
+| `--genome` | chr21 FASTA in `test_data/references/` | Reference genome |
+| `--known_sites` | dbSNP 146 (chr21) | Known SNPs for BQSR |
+| `--mills` | Mills and 1000G indels (chr21) | Known indels for BQSR |
+| `--gatk_container` | `broadinstitute/gatk:4.5.0.0` | GATK image |
 
-## Outputs
+## Output
 
-```plain
+```
 results/
-├── alignment/
-│   └── {sample}.sorted.bam          # Aligned, sorted BAM
-├── markduplicates/
-│   ├── {sample}.dedup.bam            # Deduplicated BAM
-│   ├── {sample}.dedup.bai            # BAM index
-│   └── {sample}.metrics.txt         # Duplication metrics
-├── bqsr/
-│   ├── {sample}.recal.table         # BQSR recalibration table
-│   └── {sample}.recal.bam           # BQSR-corrected BAM
-├── gvcf/
-│   ├── {sample}.g.vcf.gz            # Genomic VCF
-│   └── {sample}.g.vcf.gz.tbi      # VCF index
-└── multiqc/
-    ├── multiqc_report.html          # Aggregate QC report
-    └── multiqc_data/                # Raw QC data
+├── alignment/        {sample}.sorted.bam
+├── markduplicates/   {sample}.dedup.bam, .bai, .metrics.txt
+├── gvcf/             {sample}.g.vcf.gz, .tbi
+└── multiqc/          multiqc_report.html
 ```
 
-## System Requirements
+## Repository layout
 
-*Minimum (for testing)*
-
-- CPU: 2 cores
-- RAM: 4 GB
-- Disk: 10 GB
-- OS: Linux/macOS (Windows via WSL2)
-
-*Recommended (for real data)*
-
-- CPU: 8+ cores
-- RAM: 16+ GB
-- Disk: 100+ GB
-
-## Testing
-
-```bash
-# Syntax check (dry run)
-nextflow run main.nf -profile test -stub-run
-
-# Full test with synthetic data
-nextflow run main.nf -profile test,docker
+```
+main.nf               main workflow
+subworkflows/         alignment and BQSR subworkflows
+modules/              one module per tool (bwa, gatk, multiqc)
+conf/                 base, docker, slurm and aws_batch configs
+scripts/              reference download script
+test_data/            samplesheet for the test run
 ```
 
-## Roadmap
+## What's missing
 
-- [x] BWA-MEM alignment
-- [x] MarkDuplicates
-- [x] BQSR (BaseRecalibrator + ApplyBQSR)
-- [x] HaplotypeCaller (gVCF output)
-- [x] MultiQC reporting
-- [x] Docker containerization
-- [x] SLURM profile
-- [x] AWS Batch profile
-- [ ] Joint Genotyping (GenomicsDBImport + GenotypeGVCFs)
-- [ ] Variant Quality Score Recalibration (VQSR)
-- [ ] Somatic variant calling (Mutect2)
-- [ ] Structural variant detection (Manta)
+- Joint genotyping (GenomicsDBImport and GenotypeGVCFs). Right now the pipeline stops at per-sample gVCFs.
+- Variant filtering (VQSR or hard filters).
+- More QC in the MultiQC report, for example samtools stats and the BQSR tables.
+- A small test FASTQ set committed to the repo, so the full run (not just the stub run) can be tested in CI.
+- Later on I'd like to add somatic calling with Mutect2.
+
+## Acknowledgements
+
+GATK and the Best Practices workflows are from the Broad Institute. The module layout is loosely based on nf-core.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Broad Institute for GATK and Best Practices
-- Nextflow community for workflow framework
-- nf-core for pipeline design inspiration
-
-## Contact
-
-Ishan Maheshwari
-
-- GitHub: @IshanMaheshwari01
+MIT
