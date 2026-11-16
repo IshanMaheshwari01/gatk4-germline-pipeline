@@ -30,4 +30,16 @@ process GATK_APPLYBQSR {
         gatk: \$(echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//')
     END_VERSIONS
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.recal.bam
+    touch ${prefix}.recal.bai
+
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        gatk: stub
+    END_VERSIONS
+    """
 }

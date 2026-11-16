@@ -32,4 +32,16 @@ process GATK_HAPLOTYPECALLER {
         gatk: \$(echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//')
     END_VERSIONS
     """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    """
+    touch ${prefix}.g.vcf.gz
+    touch ${prefix}.g.vcf.gz.tbi
+
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        gatk: stub
+    END_VERSIONS
+    """
 }
