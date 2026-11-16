@@ -5,10 +5,7 @@ REF_DIR="$(cd "$(dirname "$0")/../test_data/references" && pwd)"
 mkdir -p "$REF_DIR"
 cd "$REF_DIR"
 
-echo "=========================================="
-echo "Downloading GATK Reference Data"
-echo "Target: $REF_DIR"
-echo "=========================================="
+echo "Downloading GATK reference data to $REF_DIR"
 
 # 1. Download hg38 from UCSC and extract chr21
 if [ ! -f "Homo_sapiens_assembly38.chr21.fa" ]; then
@@ -57,8 +54,5 @@ else
     echo "[6/6] Known sites already exist, skipping..."
 fi
 
-echo ""
-echo "=========================================="
-echo "Download Complete!"
-echo "=========================================="
+echo "Done."
 ls -lh "$REF_DIR"
