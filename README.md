@@ -8,7 +8,7 @@ A Nextflow (DSL2) pipeline that takes paired-end FASTQ files and produces a gVCF
 
 I built this to learn how a variant calling workflow is put together properly: one module per tool, config kept separate from code, and the same pipeline running on a laptop, a SLURM cluster or AWS Batch just by changing the profile.
 
-The HG002 benchmark numbers are collected in a small interactive [dashboard](https://ishanmaheshwari01.github.io/gatk4-germline-pipeline/docs/).
+The HG002 benchmark numbers are collected in an interactive R Shiny app (`app.R`, run with `Rscript -e 'shiny::runApp()'`).
 
 ## Steps
 
